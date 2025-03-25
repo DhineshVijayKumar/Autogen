@@ -1,68 +1,135 @@
-from typing import Any, Dict, List
 import os
 import dotenv
 import asyncio
-from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.conditions import HandoffTermination, TextMentionTermination
-from autogen_agentchat.messages import HandoffMessage
+from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
+from autogen_agentchat.conditions import TextMentionTermination
 from autogen_agentchat.teams import Swarm
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
+from typing import Dict, List, Any
 
 # Load environment variables
-
 dotenv.load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-def refund_flight(flight_id: str) -> str:
-    """Refund a flight"""
-    return f"Flight {flight_id} refunded"
-
+# Configure the model client with proper parameters for Gemini
 model_client = OpenAIChatCompletionClient(
     model="gemini-2.0-flash",
     api_key=GOOGLE_API_KEY,
 )
 
-travel_agent = AssistantAgent(
-    "travel_agent",
+async def get_stock_info(symbol: str) -> Dict[str, Any]:
+    return {"price": 100, "volume": 1000, "pe_ratio": 10}
+
+async def get_news(symbol: str) -> List[Dict[str, Any]]:
+    return [
+        {
+            "title": "Tesla Expands Cybertruck Production",
+            "date": "2024-03-20",
+            "summary": "Tesla ramps up Cybertruck manufacturing capacity at Gigafactory Texas, aiming to meet strong demand.",
+        },
+        {
+            "title": "Tesla FSD Beta Shows Promise",
+            "date": "2024-03-19",
+            "summary": "Latest Full Self-Driving beta demonstrates significant improvements in urban navigation and safety features.",
+        },
+        {
+            "title": "Model Y Dominates Global EV Sales",
+            "date": "2024-03-18",
+            "summary": "Tesla's Model Y becomes best-selling electric vehicle worldwide, capturing significant market share.",
+        },
+    ]
+
+    
+
+#planner agent
+planner_agent = AssistantAgent(
+    "planner",
     model_client=model_client,
-    handoffs=["flights_refunder", "user"],
-    system_message="""You are a travel agent.
-    The flights_refunder agent is in charge of refunding flights.
-    If you need information from the user, you must first send your message, then you can handoff to the "user".
-    Use TERMINATE when the travel planning is complete.""",
+    system_message="""
+    You are the planner for the team.
+
+    - First, collect research data from the researcher.
+    - Then, collect financial data from the financer.
+    - Only when both are available, hand off to the writer.
+    - After the writer completes the documentation, verify it and hand off to user_proxy for finalization.
+
+    Track progress:
+    - If research is missing, request researcher.
+    - If financial data is missing, request financer.
+    - If both are available, request writer.
+
+    """,
+    handoffs=["resercher", "financer", "writer", "user_proxy"],
+) 
+
+#resercher agent
+resercher = AssistantAgent(
+    "resercher",
+    model_client=model_client,
+    system_message="""
+    You are a helpful AI assistant. You will be the resercher for the team. 
+    Use the search_web function to search for information.
+    Once the information is found, always handoff to planner.
+    """,
+    tools=[get_news],
+    handoffs=["planner", "financer", "writer"],
+) 
+
+#financer
+financer = AssistantAgent(
+    "financer",
+    model_client=model_client,
+    system_message="""
+    You are a expert finnace advisor and suggester. 
+    You will be the financer for the team. Use the get_stock_info function to get stock information.
+    
+    Once the information is found, always handoff to planner.
+    """,
+    tools=[get_stock_info],
+    handoffs=["planner", "resercher", "writer"],
+) 
+
+#writer
+writer = AssistantAgent(
+    "writer",
+    model_client=model_client,
+    system_message="""
+    You are the writer for the team.
+
+    - Use research and financial data to create a structured report.
+    - If you do not have both, return to planner and request missing data.
+    - Once documentation is done, hand off to the planner.
+
+    Do NOT send an empty response.
+    """,
+    handoffs=["planner"],
+) 
+
+#user_proxy
+user_proxy = UserProxyAgent(
+    name="user_proxy",
+    description="""
+    You are a documentation expert. 
+    You will be the user_proxy for the team. Document the findings related to the task and make a text file.
+    Terminate the task when you are done by saying "TERMINATE".
+
+    -output format
+    create a file inside .docs folder called report.txt
+    make markdown format, include title, date, summary, and analysis.
+    """,
+    input_func=None
 )
 
-flights_refunder = AssistantAgent(
-    "flights_refunder",
-    model_client=model_client,
-    handoffs=["travel_agent", "user"],
-    tools=[refund_flight],
-    system_message="""You are an agent specialized in refunding flights.
-    You only need flight reference numbers to refund a flight.
-    You have the ability to refund a flight using the refund_flight tool.
-    If you need information from the user, you must first send your message, then you can handoff to the user.
-    When the transaction is complete, handoff to the travel agent to finalize.""",
+text_termination = TextMentionTermination("TERMINATE")
+termination=text_termination
+
+# task="find Tesla stock information and let me know is it a good time to buy."
+task="Conduct market research for TSLA stock"
+
+swarm = Swarm(
+    participants=[planner_agent, resercher, financer, writer, user_proxy],
+    termination_condition=termination,
 )
 
-termination = HandoffTermination(target="user") | TextMentionTermination("TERMINATE")
-team = Swarm([travel_agent, flights_refunder], termination_condition=termination)
-
-task = "I need to refund my flight."
-
-
-async def run_team_stream() -> None:
-    task_result = await Console(team.run_stream(task=task))
-    last_message = task_result.messages[-1]
-
-    while isinstance(last_message, HandoffMessage) and last_message.target == "user":
-        user_message = input("User: ")
-
-        task_result = await Console(
-            team.run_stream(task=HandoffMessage(source="user", target=last_message.source, content=user_message))
-        )
-        last_message = task_result.messages[-1]
-
-
-# Use asyncio.run(...) if you are running this in a script.
-asyncio.run(run_team_stream())
+asyncio.run(Console(swarm.run_stream(task=task)))

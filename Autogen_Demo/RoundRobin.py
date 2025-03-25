@@ -41,3 +41,4 @@ text_termination = TextMentionTermination("APPROVE")
 team = RoundRobinGroupChat([primary_agent, critic_agent], termination_condition=text_termination)
 
 asyncio.run(Console(team.run_stream(task="Write a 4 line happy poem about the IT employee.")))
+
