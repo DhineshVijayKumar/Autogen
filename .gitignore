@@ -32,3 +32,6 @@ wheels/
 *.swp
 *.swo
 .DS_Store
+
+# YAML files
+*.yaml

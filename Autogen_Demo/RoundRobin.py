@@ -1,29 +1,31 @@
 import asyncio
-import os
-import dotenv
+import yaml
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.conditions import TextMentionTermination
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
-# Load environment variables
-dotenv.load_dotenv()
+# Load model client configuration from YAML
+with open(".yaml", "r") as file:
+    config = yaml.safe_load(file)
 
-# ✅ Correctly configure OpenAIChatCompletionClient for Ollama
-model_client = OpenAIChatCompletionClient(
-    model="gemma3:1b",
-    base_url="http://127.0.0.1:11434/v1/",  # ✅ Adjust base URL for Ollama
-    api_key="key",  
-    model_info={
-        "vision": False,
-        "function_calling": False,
-        "json_output": False,
-        "family": "gemma",
-    },
-    seed=42,
-    temperature=0,
-)
+model_client = OpenAIChatCompletionClient(**config["model_config"])
+
+# # ✅ Correctly configure OpenAIChatCompletionClient for Ollama
+# model_client = OpenAIChatCompletionClient(
+#     model="gemma3:1b",
+#     base_url="http://127.0.0.1:11434/v1/",  # ✅ Adjust base URL for Ollama
+#     api_key="key",  
+#     model_info={
+#         "vision": False,
+#         "function_calling": False,
+#         "json_output": False,
+#         "family": "gemma",
+#     },
+#     seed=42,
+#     temperature=0,
+# )
 
 # Create the primary agent
 primary_agent = AssistantAgent(
