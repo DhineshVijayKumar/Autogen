@@ -9,36 +9,41 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 # Load environment variables
 dotenv.load_dotenv()
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# Create an OpenAI model client.
+# ✅ Correctly configure OpenAIChatCompletionClient for Ollama
 model_client = OpenAIChatCompletionClient(
-    model="gemini-1.5-flash-8b",
-    api_key=GOOGLE_API_KEY,
-    generation_config={
-        "seed": 42  # Set a fixed seed for deterministic outputs
-    }   
+    model="gemma3:1b",
+    base_url="http://127.0.0.1:11434/v1/",  # ✅ Adjust base URL for Ollama
+    api_key="key",  
+    model_info={
+        "vision": False,
+        "function_calling": False,
+        "json_output": False,
+        "family": "gemma",
+    },
+    seed=42,
+    temperature=0,
 )
 
-# Create the primary agent.
+# Create the primary agent
 primary_agent = AssistantAgent(
     "primary",
     model_client=model_client,
     system_message="You are a helpful AI assistant.",
 )
 
-# Create the critic agent.
+# Create the critic agent
 critic_agent = AssistantAgent(
     "critic",
     model_client=model_client,
-    system_message="You are a strict critic. Provide constructive feedback. Respond with 'APPROVE' to when your feedbacks are addressed.",
+    system_message="You are a strict critic. Provide constructive feedback. Respond with 'APPROVE' when your feedback is addressed.",
 )
 
-# Define a termination condition that stops the task if the critic approves.
+# Define a termination condition that stops the task if the critic approves
 text_termination = TextMentionTermination("APPROVE")
 
-# Create a team with the primary and critic agents.
+# Create a team with the primary and critic agents
 team = RoundRobinGroupChat([primary_agent, critic_agent], termination_condition=text_termination)
 
-asyncio.run(Console(team.run_stream(task="Write a 4 line happy poem about the IT employee.")))
-
+# Run the task
+asyncio.run(Console(team.run_stream(task="Write a 4-line happy poem about the IT employee.",)))
