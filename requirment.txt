@@ -5,3 +5,4 @@ mcp
 mcp[cli]
 uv
 mcp-client
+autogen-ext[magentic-one]

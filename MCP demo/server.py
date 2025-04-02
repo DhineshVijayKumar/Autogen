@@ -103,4 +103,3 @@ def get_response(prompt: str) -> str:
 if __name__ == "__main__":
     print("Server is starting...")
     mcp.run(transport="stdio")
-    print("Server is started...")
