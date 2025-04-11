@@ -1,9 +1,19 @@
 # basic import 
 from mcp.server.fastmcp import FastMCP
 import math
+import logging
+from starlette.applications import Starlette
+from starlette.routing import Mount
+import uvicorn
 
 # instantiate an MCP server client
-mcp = FastMCP("Hello World")
+mcp = FastMCP("Calc Tools")
+
+app = Starlette(
+    routes=[
+        Mount("/", app=mcp.sse_app()),
+    ]
+)
 
 # DEFINE TOOLS
 
@@ -101,5 +111,10 @@ def get_response(prompt: str) -> str:
 
  # execute and return the stdio output
 if __name__ == "__main__":
-    print("Server is starting...")
-    mcp.run(transport="stdio")
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("uvicorn")
+    logger.setLevel(logging.INFO)
+ 
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+

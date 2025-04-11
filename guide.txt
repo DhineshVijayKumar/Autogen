@@ -1,0 +1,60 @@
+YAML access:
+import yaml
+with open(".yaml", "r") as file:
+    config = yaml.safe_load(file)
+model_client = OpenAIChatCompletionClient(**config["model_config"])
+
+model config:
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+model_config:
+  model: "gemma3:1b"
+  base_url: "http://127.0.0.1:11434/v1/"
+  api_key: "key"
+  model_info:
+    vision: false
+    function_calling: true
+    json_output: true
+    family: "gemma"
+  seed: 42
+  temperature: 0
+
+
+Assistant Aggent:
+
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.messages import TextMessage
+from autogen_agentchat.ui import Console
+from autogen_core import CancellationToken
+
+
+agent = AssistantAgent(
+    name="assistant",
+    model_client=model_client,
+    tools=[web_search],
+    system_message="Use tools to solve tasks.",
+    description="",
+    #tools=[tools]
+)
+
+User Proxy:
+from autogen_agentchat.agents import UserProxyAgent
+user_proxy = UserProxyAgent("user_proxy", input_func=input)
+
+Web Surfer:
+from autogen_ext.agents.web_surfer import MultimodalWebSurfer
+
+ web_surfer_agent = MultimodalWebSurfer(
+        name="MultimodalWebSurfer",
+        model_client=model_client,
+        system_message="You are a web surfer.",
+        description="",
+        #downloads_folder="./web_surfer_downloads",
+        #headless=false,
+        #to_save_screenshots=false,
+    )
+
+web_surfer_agent.close()
+
+Text termination:
+from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
+text_termination = TextMentionTermination("APPROVE")

@@ -1,8 +1,12 @@
 autogen-agentchat
 autogen-ext[openai]
-python-dotenv
+autogen-ext[magentic-one]
+autogen-ext[web-surfer]
+
+uv
+pyyaml
+playwright
+
 mcp
 mcp[cli]
-uv
 mcp-client
-autogen-ext[magentic-one]
