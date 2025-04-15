@@ -110,6 +110,8 @@ def get_response(prompt: str) -> str:
     return f"Here is the response to your prompt: {prompt}"
 
  # execute and return the stdio output
+ # mcp dev server.py
+ # python server.py
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("uvicorn")

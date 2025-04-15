@@ -8,10 +8,10 @@ from autogen_agentchat.ui import Console
 from autogen_agentchat.conditions import TextMentionTermination
 
 with open("../.yaml", "r") as file:
-    config = yaml.safe_load(file)
-model_client = OpenAIChatCompletionClient(**config["model_config"])
-qwen_clinet = OpenAIChatCompletionClient(**config["qwen_config"])
-gemma_clinet = OpenAIChatCompletionClient(**config["gemma_config"])
+  config = yaml.safe_load(file)
+  model_client = OpenAIChatCompletionClient(**config["model_config"])
+  qwen_clinet = OpenAIChatCompletionClient(**config["qwen_config"])
+  gemma_clinet = OpenAIChatCompletionClient(**config["gemma_config"])
 
 code_generator = AssistantAgent(
     name="code_generator",
